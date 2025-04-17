@@ -14,7 +14,7 @@ const PAGE_SIZE: usize = 0x1000;
 
 /// The global allocator used by ArceOS.
 pub struct GlobalAllocator {
-    inner: SpinNoIrq<EarlyAllocator<PAGE_SIZE>>,
+    inner: SpinNoIrq<EarlyAllocator>,
 }
 
 impl GlobalAllocator {
