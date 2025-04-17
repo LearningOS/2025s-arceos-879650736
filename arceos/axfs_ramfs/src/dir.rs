@@ -4,7 +4,9 @@ use alloc::{string::String, vec::Vec};
 
 use axfs_vfs::{VfsDirEntry, VfsNodeAttr, VfsNodeOps, VfsNodeRef, VfsNodeType};
 use axfs_vfs::{VfsError, VfsResult};
+
 use spin::RwLock;
+use crate::alloc::string::ToString;
 
 use crate::file::FileNode;
 
@@ -163,6 +165,33 @@ impl VfsNodeOps for DirNode {
         } else {
             self.remove_node(name)
         }
+    }
+
+    fn rename(&self, old: &str, new: &str) -> VfsResult {
+        //f1,None
+        let (old_name, old_rest) = split_path(old);
+        log::info!("old_name: {:?}", old_name);
+        log::info!("old_rest: {:?}", old_rest);
+        //tem,Some(f2)
+        let (new_name, new_rest) = split_path(new);
+        log::info!("new_name: {:?}", new_name);
+        log::info!("new_rest: {:?}", new_rest);
+        
+        let old_name_string = old_name.to_string();
+
+        let old_node = self.children
+            .read() // 获取读锁
+            .get(&old_name_string) // 获取与 old_name_string 匹配的值
+            .cloned() // 克隆值（假设 VfsNodeRef 实现了 Clone）
+            .ok_or(VfsError::NotFound)?; // 如果找不到，返回错误
+        let node = self.this.upgrade().expect("this node not found");
+        node.as_any()
+            .downcast_ref::<DirNode>() 
+            .expect("this node is not a DirNode")
+            .children
+            .write() // 获取写锁
+            .insert(new_rest.unwrap_or("").to_string(), old_node); // 插入新值
+        Ok(())
     }
 
     axfs_vfs::impl_vfs_dir_default! {}

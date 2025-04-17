@@ -9,7 +9,7 @@
 #[macro_export]
 macro_rules! print {
     ($($arg:tt)*) => {
-        $crate::io::__print_impl("\x1b[36m{}\x1b[0m", format_args!($($arg)*));
+        $crate::io::__print_impl(format_args!($($arg)*));
     }
 }
 
