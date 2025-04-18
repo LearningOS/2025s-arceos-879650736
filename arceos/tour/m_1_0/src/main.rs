@@ -19,6 +19,10 @@ use axhal::mem::VirtAddr;
 use axsync::Mutex;
 use alloc::sync::Arc;
 use axmm::AddrSpace;
+use axtask::current;
+use axtask::TaskExtRef;
+use axhal::arch::TrapFrame;
+use axhal::trap::{register_trap_handler, PAGE_FAULT};
 use loader::load_user_app;
 
 const USER_STACK_SIZE: usize = 0x10000;
@@ -36,7 +40,7 @@ fn main() {
     }
 
     // Init user stack.
-    let ustack_top = init_user_stack(&mut uspace, true).unwrap();
+    let ustack_top = init_user_stack(&mut uspace, false).unwrap();
     ax_println!("New user address space: {:#x?}", uspace);
 
     // Let's kick off the user process.
@@ -65,3 +69,18 @@ fn init_user_stack(uspace: &mut AddrSpace, populating: bool) -> io::Result<VirtA
     ).unwrap();
     Ok(ustack_top)
 }
+
+#[register_trap_handler(PAGE_FAULT)]
+fn handle_page_fault(vaddr: VirtAddr , access_flags: MappingFlags, is_user: bool) -> bool{
+    if !is_user {
+        panic!("kernel page fault");
+    } else {
+        ax_println!("handler user page fault");
+        axtask::current()
+            .task_ext()
+            .aspace
+            .lock()
+            .handle_page_fault(vaddr, access_flags)
+    }
+    
+}   
