@@ -70,17 +70,17 @@ fn init_user_stack(uspace: &mut AddrSpace, populating: bool) -> io::Result<VirtA
     Ok(ustack_top)
 }
 
-#[register_trap_handler(PAGE_FAULT)]
-fn handle_page_fault(vaddr: VirtAddr , access_flags: MappingFlags, is_user: bool) -> bool{
-    if !is_user {
-        panic!("kernel page fault");
-    } else {
-        ax_println!("handler user page fault");
-        axtask::current()
-            .task_ext()
-            .aspace
-            .lock()
-            .handle_page_fault(vaddr, access_flags)
-    }
+// #[register_trap_handler(PAGE_FAULT)]
+// fn handle_page_fault(vaddr: VirtAddr , access_flags: MappingFlags, is_user: bool) -> bool{
+//     if !is_user {
+//         panic!("kernel page fault");
+//     } else {
+//         ax_println!("handler user page fault");
+//         axtask::current()
+//             .task_ext()
+//             .aspace
+//             .lock()
+//             .handle_page_fault(vaddr, access_flags)
+//     }
     
-}   
+// }   

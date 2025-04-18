@@ -1,13 +1,17 @@
 #![allow(dead_code)]
 
 use core::ffi::{c_void, c_char, c_int};
+use arceos_posix_api::get_file_like;
 use axhal::arch::TrapFrame;
-use axhal::trap::{register_trap_handler, SYSCALL};
+use axhal::trap::{register_trap_handler, SYSCALL, PAGE_FAULT};
 use axerrno::LinuxError;
 use axtask::current;
 use axtask::TaskExtRef;
-use axhal::paging::MappingFlags;
+use axhal::paging::{MappingFlags, PageSize};
 use arceos_posix_api as api;
+use axhal::mem::VirtAddr;
+use memory_addr::VirtAddrRange;
+
 
 const SYS_IOCTL: usize = 29;
 const SYS_OPENAT: usize = 56;
@@ -131,6 +135,31 @@ fn handle_syscall(tf: &TrapFrame, syscall_num: usize) -> isize {
     ret
 }
 
+#[register_trap_handler(PAGE_FAULT)]
+fn page_fault(vaddr: VirtAddr, access_flags: MappingFlags, is_user: bool) -> bool {
+    ax_println!(
+        "vaddr: {:#x}, access_flags: {:#x}, is_user: {}",
+        vaddr,
+        access_flags,
+        is_user
+    );
+    if !is_user {
+        panic!("kernel page fault");
+    } else {
+        ax_println!("handler user page fault");
+        axtask::current()
+            .task_ext()
+            .aspace
+            .lock()
+            .handle_page_fault(vaddr, access_flags)
+    }
+}
+
+pub const fn align_up(addr: usize, align: usize) -> usize {
+    (addr + align - 1) & !(align - 1)
+}
+
+
 #[allow(unused_variables)]
 fn sys_mmap(
     addr: *mut usize,
@@ -140,7 +169,70 @@ fn sys_mmap(
     fd: i32,
     _offset: isize,
 ) -> isize {
-    unimplemented!("no sys_mmap!");
+    ax_println!(
+        "sys_mmap: addr={:p}, length={:#x}, prot={:#x}, flags={:#x}, fd={:#x}, offset={:#x}",
+        addr,
+        length,
+        prot,
+        flags,
+        fd,
+        _offset
+    );
+    let current = current();
+    let mut uspace = current.task_ext().aspace.lock();
+    let mut mapping_flags = MappingFlags::from_bits_truncate(flags as usize);
+    let mut prot_flags = MmapProt::from_bits_truncate(prot);
+
+
+    let ustack_top = uspace.end();
+
+    ax_println!("uspace top: {:#x}", ustack_top);
+    ax_println!("uspace base: {:#x}", uspace.base());
+    ax_println!("uspace size: {:#x}", uspace.size());
+
+    let Some(vaddr) = uspace.find_free_area(
+        VirtAddr::from(align_up(addr as usize, 0x1000)),
+        align_up(length, 0x1000),
+        VirtAddrRange::from_start_size(uspace.base(), uspace.size()),//ustack_top
+    ) else {
+        ax_print!("NO memory");
+        return -1;
+    };
+
+    if let Err(error) = uspace.map_alloc(
+        vaddr,
+        align_up(length, 0x1000),
+        prot_flags.into(),
+        true,
+    ){
+        ax_print!("Err={}",error);
+    };
+
+    ax_print!("succeed alloc:{:#x}\n",vaddr);
+
+    let file = match get_file_like(fd) {
+        Ok(file) => file,
+        Err(e) => {
+            ax_println!("failed get_file_like : {}", e);
+            return 0;
+        }
+    };
+
+    let mut buf = alloc::vec![0; align_up(length, 0x1000)];
+    if let Err(e) = file.read(&mut buf) {
+        ax_println!("read failed: {}", e);
+        return 0;
+    };
+    ax_print!("aligned length:{}\n",align_up(length, 0x1000));
+    ax_println!("read success: buf.len={}\n", buf.len());
+
+    if let Err(e) = uspace.write(vaddr, &buf) {
+        ax_println!("failed write: {}", e);
+        return 0;
+    };
+    ax_println!("succeed write: vaddr={:#x}", vaddr);
+
+    vaddr.as_usize() as isize
 }
 
 fn sys_openat(dfd: c_int, fname: *const c_char, flags: c_int, mode: api::ctypes::mode_t) -> isize {
