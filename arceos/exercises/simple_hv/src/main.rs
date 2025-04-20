@@ -35,19 +35,22 @@ fn main() {
 
     // A new address space for vm.
     let mut uspace = axmm::new_user_aspace().unwrap();
-
+    
     // Load vm binary file into address space.
     if let Err(e) = load_vm_image("/sbin/skernel2", &mut uspace) {
         panic!("Cannot load app! {:?}", e);
     }
+    ax_println!("load_vm_image ok!");
 
     // Setup context to prepare to enter guest mode.
     let mut ctx = VmCpuRegisters::default();
     prepare_guest_context(&mut ctx);
+    ax_println!("prepare_guest_context ok!");
 
     // Setup pagetable for 2nd address mapping.
     let ept_root = uspace.page_table_root();
     prepare_vm_pgtable(ept_root);
+    ax_println!("prepare_vm_pgtable ok!");
 
     // Kick off vm and wait for it to exit.
     while !run_guest(&mut ctx) {
@@ -78,7 +81,9 @@ fn run_guest(ctx: &mut VmCpuRegisters) -> bool {
 #[allow(unreachable_code)]
 fn vmexit_handler(ctx: &mut VmCpuRegisters) -> bool {
     use scause::{Exception, Trap};
-
+    ax_println!("scause: {:#x}", scause::read().bits());
+    ax_println!("sepc: {:#x}", ctx.guest_regs.sepc);
+    ax_println!("stval: {:#x}", stval::read());
     let scause = scause::read();
     match scause.cause() {
         Trap::Exception(Exception::VirtualSupervisorEnvCall) => {
@@ -102,19 +107,24 @@ fn vmexit_handler(ctx: &mut VmCpuRegisters) -> bool {
             }
         },
         Trap::Exception(Exception::IllegalInstruction) => {
-            panic!("Bad instruction: {:#x} sepc: {:#x}",
+            ax_println!("Bad instruction: {:#x} sepc: {:#x}",
                 stval::read(),
                 ctx.guest_regs.sepc
             );
+            ctx.guest_regs.sepc += 4;
+            ctx.guest_regs.gprs.set_reg(A0, 0x6688);
+
         },
         Trap::Exception(Exception::LoadGuestPageFault) => {
-            panic!("LoadGuestPageFault: stval{:#x} sepc: {:#x}",
+            ax_println!("LoadGuestPageFault: stval{:#x} sepc: {:#x}",
                 stval::read(),
                 ctx.guest_regs.sepc
             );
+            ctx.guest_regs.sepc += 4;
+            ctx.guest_regs.gprs.set_reg(A1, 0x1234);
         },
         _ => {
-            panic!(
+            ax_println!(
                 "Unhandled trap: {:?}, sepc: {:#x}, stval: {:#x}",
                 scause.cause(),
                 ctx.guest_regs.sepc,

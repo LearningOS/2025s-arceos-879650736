@@ -69,5 +69,5 @@ make[2]: Entering directory '/home/ssy/2025s-arceos-879650736/arceos/payload/ske
 make[2]: Leaving directory '/home/ssy/2025s-arceos-879650736/arceos/payload/skernel2'
 make[1]: Leaving directory '/home/ssy/2025s-arceos-879650736/arceos/payload'
 Write file 'payload/skernel2/skernel2' into disk.img
-simple_hv default
-500
+simple_hv pass
+600
