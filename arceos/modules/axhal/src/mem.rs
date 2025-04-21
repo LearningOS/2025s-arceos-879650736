@@ -2,6 +2,7 @@
 
 use core::fmt;
 
+use axlog::ax_println;
 #[doc(no_inline)]
 pub use memory_addr::{MemoryAddr, PhysAddr, VirtAddr, PAGE_SIZE_4K};
 
@@ -77,6 +78,14 @@ pub fn memory_regions() -> impl Iterator<Item = MemRegion> {
 
 /// Returns the memory regions of the kernel image (code and data sections).
 fn kernel_image_regions() -> impl Iterator<Item = MemRegion> {
+    //ax_println!(".text: {:#x} - {:#x}", _stext as usize, _etext as usize);
+    // ax_println!(".rodata: {:#x} - {:#x}", _srodata as usize, _erodata as usize);
+    // ax_println!(".data: {:#x} - {:#x}", _sdata as usize, _edata as usize);
+    // ax_println!(".bss: {:#x} - {:#x}", _sbss as usize, _ebss as usize);
+    ax_println!("boot stack: {:#x} - {:#x}", boot_stack as usize, boot_stack_top as usize);
+    ax_println!("boot stack size: {:#x}", boot_stack_top as usize - boot_stack as usize);
+    ax_println!("kernel image: {:#x} - {:#x}", _stext as usize, _ekernel as usize);
+    ax_println!("kernel image size: {:#x}", _ekernel as usize - _stext as usize);
     [
         MemRegion {
             paddr: virt_to_phys((_stext as usize).into()),
@@ -131,6 +140,12 @@ pub(crate) fn default_mmio_regions() -> impl Iterator<Item = MemRegion> {
 pub(crate) fn default_free_regions() -> impl Iterator<Item = MemRegion> {
     let start = virt_to_phys((_ekernel as usize).into()).align_up_4k();
     let end = pa!(axconfig::PHYS_MEMORY_END).align_down_4k();
+    ax_println!(
+        "default free memory: {:#x} - {:#x}",
+        start.as_usize(),
+        end.as_usize()
+    );
+    ax_println!("default free memory size: {:#x}", end.as_usize() - start.as_usize());
     core::iter::once(MemRegion {
         paddr: start,
         size: end.as_usize() - start.as_usize(),
