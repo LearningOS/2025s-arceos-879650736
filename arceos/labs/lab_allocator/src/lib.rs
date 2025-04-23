@@ -85,7 +85,7 @@ impl ByteAllocator for LabByteAllocator {
     fn alloc(&mut self, layout: Layout) -> AllocResult<NonNull<u8>> {
     let size = layout.size();
     let align = layout.align();
-    ax_println!("{}LabByteAllocator: alloc, size: {:#x}, align: {:#x}{}", GREEN, size, align, RESET);
+    //ax_println!("{}LabByteAllocator: alloc, size: {:#x}, align: {:#x}{}", GREEN, size, align, RESET);
         if align == 8{
             let result = self.pool.alloc(layout);
             match result {
@@ -130,7 +130,7 @@ impl ByteAllocator for LabByteAllocator {
 
     }
     fn dealloc(&mut self, pos: NonNull<u8>, layout: Layout) {
-        ax_println!("{}LabByteAllocator: dealloc, ptr: {:#x}, size: {:#x}, align: {:#x}{}", BLUE, pos.as_ptr() as usize, layout.size(), layout.align(), RESET);
+        //ax_println!("{}LabByteAllocator: dealloc, ptr: {:#x}, size: {:#x}, align: {:#x}{}", BLUE, pos.as_ptr() as usize, layout.size(), layout.align(), RESET);
         if layout.align() == 8{
             self.pool.dealloc(pos, layout);
             return;
