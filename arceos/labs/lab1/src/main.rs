@@ -30,15 +30,19 @@ fn alloc_pass(delta: usize) -> Vec<Vec<u8>> {
     let mut items = Vec::new();
     let mut base = 32;
     loop {
+        
         let c = (delta % 256) as u8;
         let a = vec![c; base+delta];
+        println!("c:{} base+delta {}", c, base + delta);
+        println!("a.len(): {}", a.len());
         items.push(a);
+        //执行15次后，base达到512k
         if base >= 512*1024 {
             break;
         }
         base *= 2;
     }
-    items
+    items 
 }
 
 fn free_pass(items: &mut Vec<Vec<u8>>, delta: u8) {
