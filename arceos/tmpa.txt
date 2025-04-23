@@ -1,0 +1,6 @@
+    [92;1mCreating[0m FAT32 disk image "disk.img" ...
+mkfs.fat 4.2 (2021-01-31)
+Indicator: 512
+[37m[  0.801988 0 axruntime::lang_items:5] [31mpanicked at modules/axalloc/src/lib.rs:124:31:
+Bumb: NoMemory.[m
+[m
