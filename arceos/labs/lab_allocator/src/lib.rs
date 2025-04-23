@@ -33,7 +33,7 @@ const RESET: &str = "\u{1B}[0m";
 /// 
 //boot stack: 0xffffffc08020a000 - 0xffffffc08024a000
 //boot stack size: 262144
-const MAX_POOL_SIZE: usize = 1 << 18;   // 256 KiB 0x40000
+const MAX_POOL_SIZE: usize = 0x100000;   // 256 KiB 0x40000
 
 const ALLOC_POOL_SIZE: usize = 0x10000; // 64 KiB
 
@@ -52,6 +52,7 @@ pub struct LabByteAllocator{
     start: usize,
     odd_size:usize,
     count: usize,
+    dealloc_count: usize,
 }
 
 impl LabByteAllocator {
@@ -63,6 +64,7 @@ impl LabByteAllocator {
             start: 0,
             odd_size: 0,
             count: 0,
+            dealloc_count: 0,
         }
 
     }
@@ -77,7 +79,8 @@ impl BaseAllocator for LabByteAllocator {
         self.back = END_MEMORY;
         self.odd_size = 0;
         self.count = 0;
-        ax_println!("{}LabByteAllocator: init, start: {:#x}, size: {:#x}{}",GREEN, start, size, RESET);
+        self.dealloc_count = 0;
+        //ax_println!("{}LabByteAllocator: init, start: {:#x}, size: {:#x}{}",GREEN, start, size, RESET);
     }
     fn add_memory(&mut self, start: usize, size: usize) -> AllocResult {
         unimplemented!();
@@ -111,7 +114,7 @@ impl ByteAllocator for LabByteAllocator {
                 return Err(allocator::AllocError::MemoryOverlap);
             }
             self.front = new_pos;
-            //ax_println!("{}aligned_pos: {:#x}, new_pos: {:#x}{}",BLUE, aligned_pos, new_pos,RESET);
+            //ax_println!("{}aligned_pos: {:#x}, new_pos: {:#x}{}",YELLOW, aligned_pos, new_pos,RESET);
             return NonNull::new(aligned_pos as *mut u8)
             .ok_or(allocator::AllocError::InvalidParam)
         //not be removed,it won`t be checked,can be used and can be reused
@@ -136,9 +139,12 @@ impl ByteAllocator for LabByteAllocator {
             self.pool.dealloc(pos, layout);
             return;
         }
-        self.front -= layout.size();
-        if self.front - self.start == layout.size() {
+        self.dealloc_count += 1;
+        //self.front -= layout.size();
+        //ax_println!("{}LabByteAllocator: dealloc, front: {:#x}, size: {:#x},align: {:#x}, self.start: {:#x}{}", BLUE, self.front, layout.size(),layout.align(), self.start, RESET);
+        if self.dealloc_count % 7 == 0 {
             self.front = self.start;
+
         }
     }
     fn total_bytes(&self) -> usize {
@@ -146,11 +152,11 @@ impl ByteAllocator for LabByteAllocator {
         END_MEMORY - self.start
     }
     fn used_bytes(&self) -> usize {
-        ax_println!("{}LabByteAllocator: used bytes: {:#x}{}",YELLOW , self.front - self.start, RESET);
+        //ax_println!("{}LabByteAllocator: used bytes: {:#x}{}",YELLOW , self.front - self.start, RESET);
         self.front - self.start 
     }
     fn available_bytes(&self) -> usize {
-        ax_println!("{}LabByteAllocator: available bytes: {:#x}{}",YELLOW , self.back - self.front, RESET);
+        //ax_println!("{}LabByteAllocator: available bytes: {:#x}{}",YELLOW , self.back - self.front, RESET);
         self.back - self.front
     }
 }
