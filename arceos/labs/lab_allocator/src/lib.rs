@@ -33,7 +33,7 @@ const RESET: &str = "\u{1B}[0m";
 /// 
 //boot stack: 0xffffffc08020a000 - 0xffffffc08024a000
 //boot stack size: 262144
-const MAX_POOL_SIZE: usize = 0x37000;   // 256 KiB 0x40000
+const MAX_POOL_SIZE: usize = 0x40000;   // 256 KiB 0x40000
 
 const ALLOC_POOL_SIZE: usize = 0x10000; // 64 KiB
 
