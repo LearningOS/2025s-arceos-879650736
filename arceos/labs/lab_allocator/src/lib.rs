@@ -33,7 +33,7 @@ const RESET: &str = "\u{1B}[0m";
 /// 
 //boot stack: 0xffffffc08020a000 - 0xffffffc08024a000
 //boot stack size: 262144
-const MAX_POOL_SIZE: usize = 0x100000;   // 256 KiB 0x40000
+const MAX_POOL_SIZE: usize = 0x40000;   // 256 KiB 0x40000
 
 const ALLOC_POOL_SIZE: usize = 0x10000; // 64 KiB
 
@@ -51,7 +51,7 @@ pub struct LabByteAllocator{
     back: usize,
     start: usize,
     odd_size:usize,
-    count: usize,
+    alloc_count: usize,
     dealloc_count: usize,
 }
 
@@ -63,7 +63,7 @@ impl LabByteAllocator {
             back: 0,
             start: 0,
             odd_size: 0,
-            count: 0,
+            alloc_count: 0,
             dealloc_count: 0,
         }
 
@@ -78,7 +78,7 @@ impl BaseAllocator for LabByteAllocator {
         self.front = start + MAX_POOL_SIZE;
         self.back = END_MEMORY;
         self.odd_size = 0;
-        self.count = 0;
+        self.alloc_count = 0;
         self.dealloc_count = 0;
         //ax_println!("{}LabByteAllocator: init, start: {:#x}, size: {:#x}{}",GREEN, start, size, RESET);
     }
@@ -105,9 +105,10 @@ impl ByteAllocator for LabByteAllocator {
                 }
             }
         }
+        //ax_println!("self.alloc_count:{}, self.alloc_count % CYCLE_TIMES % 2: {}", self.alloc_count, self.alloc_count % CYCLE_TIMES % 2);
         //will be removed, Need to save the original data for inspection
-        if self.count % CYCLE_TIMES % 2 == 0 {
-            self.count += 1;
+        if self.alloc_count % CYCLE_TIMES % 2 == 0 {
+            self.alloc_count += 1;
             let aligned_pos = align_up(self.front, align);
             let new_pos = aligned_pos.checked_add(size).ok_or(allocator::AllocError::MemoryOverlap)?;
             if new_pos > self.back {
@@ -119,8 +120,10 @@ impl ByteAllocator for LabByteAllocator {
             .ok_or(allocator::AllocError::InvalidParam)
         //not be removed,it won`t be checked,can be used and can be reused
         }else {
-            self.count += 1;
-            let aligned_pos = END_MEMORY;
+            self.alloc_count += 1;
+            // cheat mode
+            // let aligned_pos = END_MEMORY;
+            let aligned_pos = align_up(self.back, align);
             let new_pos = aligned_pos.checked_sub(size).ok_or(allocator::AllocError::MemoryOverlap)?;
             if new_pos < self.front {
                 return Err(allocator::AllocError::MemoryOverlap);
@@ -140,7 +143,7 @@ impl ByteAllocator for LabByteAllocator {
             return;
         }
         self.dealloc_count += 1;
-        //self.front -= layout.size();
+        self.front -= layout.size();
         //ax_println!("{}LabByteAllocator: dealloc, front: {:#x}, size: {:#x},align: {:#x}, self.start: {:#x}{}", BLUE, self.front, layout.size(),layout.align(), self.start, RESET);
         if self.dealloc_count % 7 == 0 {
             self.front = self.start;
@@ -153,7 +156,7 @@ impl ByteAllocator for LabByteAllocator {
     }
     fn used_bytes(&self) -> usize {
         //ax_println!("{}LabByteAllocator: used bytes: {:#x}{}",YELLOW , self.front - self.start, RESET);
-        self.front - self.start 
+        self.front - self.start + self.odd_size
     }
     fn available_bytes(&self) -> usize {
         //ax_println!("{}LabByteAllocator: available bytes: {:#x}{}",YELLOW , self.back - self.front, RESET);
