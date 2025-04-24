@@ -23,5 +23,6 @@ mkdir -p ./mnt
 sudo mount ./disk.img ./mnt
 sudo mkdir -p ./mnt/sbin
 sudo cp $FILE ./mnt/sbin
+sudo cp ./pfld ./mnt/sbin
 sudo umount ./mnt
 rm -rf mnt
